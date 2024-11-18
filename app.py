@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import logging
 from typing import Union, Optional
 from tabulate import tabulate
+import argparse
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -64,8 +65,12 @@ def view_all_data(student_data: pd.DataFrame, group_name: str) -> None:
 
 def main(excel_file: str, sheet_name: str) -> None:
     """Основная функция программы для обработки данных из Excel и взаимодействия с пользователем."""
-    df = pd.read_excel(excel_file, sheet_name=sheet_name, header=None)
-    
+    try:
+        df = pd.read_excel(excel_file, sheet_name=sheet_name, header=None)
+    except Exception as e:
+        print(f"Ошибка при чтении файла Excel: {e}")
+        return
+
     # Извлечение названия группы из файла Excel
     group_name = df.iloc[0, 0].split(':')[-1].strip()
     
@@ -91,29 +96,29 @@ def main(excel_file: str, sheet_name: str) -> None:
         if choice == '1':
             last_name = input("Введите фамилию студента: ")
             search_student(student_data, last_name)
-        
         elif choice == '2':
             print("Доступные даты для отчета:")
             available_dates = [date.strftime('%Y-%m-%d') for date in dates]
             for i, d in enumerate(available_dates):
                 print(f"{i + 1}. {d}")
-            
             date_choice = input("Выберите номер даты для отчета: ")
             date_index = int(date_choice) - 1
             if 0 <= date_index < len(available_dates):
                 generate_attendance_report(student_data, dates, dates[date_index], group_name)
             else:
                 print("Неверный номер даты.")
-        
         elif choice == '3':
             view_all_data(student_data, group_name)
-        
         elif choice == '4':
             print("Выход из программы.")
             break
-        
         else:
             print("Неверный выбор. Пожалуйста, попробуйте снова.")
 
 if __name__ == "__main__":
-    main(DEFAULT_EXCEL_FILE, DEFAULT_SHEET_NAME)
+    parser = argparse.ArgumentParser(description="Программа для работы с данными о посещаемости студентов.")
+    parser.add_argument("--file", default="Черненко Александр Александрович.xlsx", help="Путь к файлу Excel")
+    parser.add_argument("--sheet", default="Pyt-9", help="Имя листа в файле Excel")
+    args = parser.parse_args()
+
+    main(args.file, args.sheet)
