@@ -3,13 +3,35 @@ from datetime import datetime, timedelta
 import logging
 from typing import Union, Optional
 from tabulate import tabulate
+from openpyxl import load_workbook
 import argparse
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 DEFAULT_EXCEL_FILE = 'Черненко Александр Александрович.xlsx'
-DEFAULT_SHEET_NAME = 'Pyt-9'
 BASE_DATE = datetime(2024, 10, 3)
+
+def get_sheet_names(excel_file: str) -> list:
+    """Получает список имен всех листов в Excel файле."""
+    workbook = load_workbook(excel_file, read_only=True)
+    return workbook.sheetnames
+
+def choose_sheet(excel_file: str) -> str:
+    """Позволяет пользователю выбрать лист для работы."""
+    sheet_names = get_sheet_names(excel_file)
+    print("Доступные листы:")
+    for i, name in enumerate(sheet_names, 1):
+        print(f"{i}. {name}")
+    
+    while True:
+        try:
+            choice = int(input("Выберите номер листа: ")) - 1
+            if 0 <= choice < len(sheet_names):
+                return sheet_names[choice]
+            else:
+                print("Неверный номер. Попробуйте еще раз.")
+        except ValueError:
+            print("Пожалуйста, введите число.")
 
 def parse_date(date: Union[datetime, str, float]) -> Optional[datetime]:
     """Преобразует различные форматы дат в объект datetime."""
@@ -17,16 +39,6 @@ def parse_date(date: Union[datetime, str, float]) -> Optional[datetime]:
         return pd.to_datetime(date)
     number = int(float(str(date)))
     return BASE_DATE + timedelta(days=(number - 1) * 7)
-
-def search_student(student_data: pd.DataFrame, last_name: str) -> pd.DataFrame:
-    """Поиск студента по фамилии и вывод информации о найденных студентах."""
-    result = student_data[student_data['Фамилия'].str.contains(last_name, case=False)]
-    if result.empty:
-        print(f"Студент с фамилией '{last_name}' не найден.")
-    else:
-        print("Найденные студенты:")
-        print(tabulate(result.fillna(0), headers='keys', tablefmt='pretty', showindex=False))
-    return result
 
 def save_report(data: pd.DataFrame, file_name: str, group_name: str) -> None:
     """Сохраняет отчет в HTML файл с информацией о группе."""
@@ -48,6 +60,13 @@ def generate_attendance_report(student_data: pd.DataFrame, dates: list, date: da
         attendance_data = student_data[['№ п/п', 'Фамилия', 'Имя', 'Отчество', attendance_column]].copy()
         attendance_data[attendance_column] = attendance_data[attendance_column].fillna(0).astype(int)
         
+        # Сортируем данные по столбцу '№ п/п'
+        attendance_data = attendance_data.sort_values('№ п/п')
+        
+        # Сбрасываем индекс и пересоздаем столбец '№ п/п'
+        attendance_data = attendance_data.reset_index(drop=True)
+        attendance_data['№ п/п'] = attendance_data.index + 1
+        
         print(f"Отчет о посещаемости группы {group_name} за {date_str}:")
         print(tabulate(attendance_data, headers='keys', tablefmt='pretty', showindex=False))
 
@@ -64,14 +83,32 @@ def view_all_data(student_data: pd.DataFrame, group_name: str) -> None:
     if input("Хотите сохранить все данные в отчет? (да/нет): ").strip().lower() == 'да':
         save_report(student_data, f"полный_отчет_группы_{group_name}.html", group_name)
 
-def generate_student_report(student_data: pd.DataFrame, student: pd.Series, dates: list, group_name: str) -> None:
-    """Генерирует отчет о посещаемости для конкретного студента."""
-    attendance_data = student[4:].reset_index()
-    attendance_data.columns = ['Дата', 'Присутствие']
-    attendance_data['Дата'] = dates
+def generate_student_report(student_data: pd.DataFrame, dates: list, group_name: str) -> None:
+    """Генерирует отчет о посещаемости для выбранного студента."""
+    print("Список студентов:")
+    # Сортируем student_data по '№ п/п' перед выводом списка
+    sorted_student_data = student_data.sort_values('№ п/п')
+    for i, (_, student) in enumerate(sorted_student_data.iterrows(), 1):
+        print(f"{i}. {student['Фамилия']} {student['Имя']}")
+    
+    while True:
+        try:
+            student_choice = int(input("Выберите номер студента для отчета: ")) - 1
+            if 0 <= student_choice < len(sorted_student_data):
+                student = sorted_student_data.iloc[student_choice]
+                break
+            else:
+                print("Неверный номер студента. Попробуйте еще раз.")
+        except ValueError:
+            print("Пожалуйста, введите число.")
+    
+    attendance_data = pd.DataFrame({
+        'Дата': dates,
+        'Присутствие': student.iloc[4:].values
+    })
     attendance_data['Присутствие'] = attendance_data['Присутствие'].fillna(0).astype(int)
     
-    print(f"Отчет о посещаемости студента(ки) {student['Фамилия']} {student['Имя']} {student['Отчество']}:")
+    print(f"\nОтчет о посещаемости студента(ки) {student['Фамилия']} {student['Имя']} {student['Отчество']}:")
     print(tabulate(attendance_data, headers='keys', tablefmt='pretty', showindex=False))
     
     if input("Хотите сохранить отчет для этого студента? (да/нет): ").strip().lower() == 'да':
@@ -80,13 +117,13 @@ def generate_student_report(student_data: pd.DataFrame, student: pd.Series, date
         <h2>Студент: {student['Фамилия']} {student['Имя']} {student['Отчество']}</h2>
         {attendance_data.to_html(index=False)}
         """
-        file_name = f"отчет_о_ посещаемости_студента(ки)_{student['Фамилия']}_{group_name}.html"
+        file_name = f"отчет_о_посещаемости_студента(ки)_{student['Фамилия']}_{group_name}.html"
         with open(file_name, 'w', encoding='utf-8') as f:
             f.write(html_content)
         print(f"Отчет успешно сохранен в файл: {file_name}")
 
 def main(excel_file: str, sheet_name: str) -> None:
-    """Основная функция программы для обработки данных из Excel и взаимодействия с пользователем."""
+    """Основная функция программы для обработки данных из Excel и взаимодействия с пользователем."""   
     try:
         df = pd.read_excel(excel_file, sheet_name=sheet_name, header=None)
     except Exception as e:
@@ -103,7 +140,7 @@ def main(excel_file: str, sheet_name: str) -> None:
     while True:
         print(f"\nРабота с данными группы: {group_name}")
         print("Выберите действие:")
-        print("1. Поиск студента по фамилии")
+        print("1. Генерация отчета о посещаемости для студента")
         print("2. Генерация отчета о посещаемости за день/дату")
         print("3. Просмотр всех данных файла")
         print("4. Выход")
@@ -111,17 +148,7 @@ def main(excel_file: str, sheet_name: str) -> None:
         choice = input("Введите номер действия: ")
         
         if choice == '1':
-            last_name = input("Введите фамилию студента: ")
-            result = search_student(student_data, last_name)
-            if not result.empty:
-                if len(result) == 1:
-                    generate_student_report(student_data, result.iloc[0], dates, group_name)
-                else:
-                    student_index = int(input("Введите номер студента для подробного отчета: ")) - 1
-                    if 0 <= student_index < len(result):
-                        generate_student_report(student_data, result.iloc[student_index], dates, group_name)
-                    else:
-                        print("Неверный номер студента.")
+            generate_student_report(student_data, dates, group_name)
         elif choice == '2':
             print("Доступные даты для отчета:")
             available_dates = [date.strftime('%Y-%m-%d') for date in dates]
@@ -144,7 +171,7 @@ def main(excel_file: str, sheet_name: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Программа для работы с данными о посещаемости студентов.")
     parser.add_argument("--file", default=DEFAULT_EXCEL_FILE, help="Путь к файлу Excel")
-    parser.add_argument("--sheet", default=DEFAULT_SHEET_NAME, help="Имя листа в файле Excel")
     args = parser.parse_args()
 
-    main(args.file, args.sheet)
+    sheet_name = choose_sheet(args.file)
+    main(args.file, sheet_name)
