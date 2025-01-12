@@ -126,7 +126,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Программа для работы с данными о посещаемости студентов.")
     parser.add_argument("--file", default=DEFAULT_EXCEL_FILE, help="Путь к файлу Excel")
     parser.add_argument("--sheet_index", type=int, required=True, help="Номер листа для работы")
-    parser.add_argument("--action", required=True, help="Действие: 1 - отчет по студентам, 2 - отчет по дате, 3 - просмотр всех данных, 4 - выход")
+    parser.add_argument("--action", required=True, help="Действие: 1 - отчет по студентам, 2 - отчет по дате, 3 - полный отчет")
     parser.add_argument("--student_index", type=int, help="Номер студента для отчета (только для действия 1)")
     parser.add_argument("--date_index", type=int, help="Номер даты для отчета (только для действия 2)")
     args = parser.parse_args()
