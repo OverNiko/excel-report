@@ -119,8 +119,6 @@ def main(excel_file: str, sheet_index: int, action: str, student_index: Optional
             print("Необходимо указать номер даты для отчета.")
     elif action == '3':
         view_all_data(student_data, dates, group_name)
-    elif action == '4':
-        print("Выход из программы.")
     else:
         print("Неверный выбор. Пожалуйста, попробуйте снова.")
 

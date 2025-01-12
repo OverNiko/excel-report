@@ -108,7 +108,12 @@
 
 ## Запуск программы
 ```
-python app.py [--file EXCEL_FILE]
+python app.py [-h] [--file FILE] --sheet_index SHEET_INDEX --action ACTION [--student_index STUDENT_INDEX] [--date_index DATE_INDEX]
 ```
 Где:
-- `EXCEL_FILE` - путь к файлу Excel (по умолчанию "Черненко Александр Александрович.xlsx")
+- `h` - помощь по командам
+- `file` - путь к файлу Excel (по умолчанию "Черненко Александр Александрович.xlsx")
+- `sheet_index` - номер листа для работы
+- `action` - действие: 1 - отчет по студентам, 2 - отчет по дате, 3 - просмотр всех данных
+- `student_index` - номер студента для отчета (только для действия 1)
+- `date_index` - номер даты для отчета (только для действия 2)
