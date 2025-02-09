@@ -45,11 +45,15 @@ def generate_attendance_report(student_data: pd.DataFrame, dates: list, date: da
     if date_str in [d.strftime('%Y-%m-%d') for d in dates]:
         index = dates.index(date)
         attendance_column = student_data.columns[4 + index]
-        
+                
         attendance_data = student_data[['Фамилия', 'Имя', 'Отчество', attendance_column]].copy()
         attendance_data[attendance_column] = attendance_data[attendance_column].fillna(0).astype(int)
         
-        report_content = f"<h1>Отчет по группе за дату</h1>\n<h2>Группа: {group_name}</h2>\n<h3>Всего студентов: {len(student_data)}</h3>\n"
+        total_students = len(student_data)
+        total_attendance = sum(attendance_data[attendance_column])
+        attendance_percentage = (total_attendance / total_students) * 100
+        
+        report_content = f"<h1>Отчет по группе за дату</h1>\n<h2>Группа: {group_name}</h2>\n<h3>Всего студентов: {total_students}</h3>\n<h3>Посещаемость: Общая посещаемость на занятии {date}: {total_attendance} из {total_students} ({attendance_percentage:.2f}%)\n"
         report_content += attendance_data.to_html(index=False)
         
         save_report(report_content, f"отчет_группы_{group_name}_за_{date_str}.html")
@@ -58,7 +62,22 @@ def generate_attendance_report(student_data: pd.DataFrame, dates: list, date: da
 
 def view_all_data(student_data: pd.DataFrame, dates: list, group_name: str) -> None:
     """Просмотр всех данных файла и возможность сохранения в отчет."""
-    report_content = f"<h1>Отчет по группе</h1>\n<h2>Группа: {group_name}</h2>\n<h3>Всего студентов: {len(student_data)}</h3>\n"
+    total_classes = len(dates)
+    total_students = len(student_data)
+    
+    attendance_data = pd.DataFrame({
+        'Дата': dates
+    })
+    
+    for i, student in student_data.iterrows():
+        attendance_data[f'Студент_{i}'] = student.iloc[4:].values
+        
+    attendance_data = attendance_data.fillna(0).astype(int)
+    
+    total_attendance = attendance_data.drop(columns=['Дата']).sum().sum()
+    attendance_percentage = (total_attendance / (total_classes * total_students)) * 100
+    
+    report_content = f"<h1>Отчет по группе</h1>\n<h2>Группа: {group_name}</h2>\n<h3>Всего студентов: {total_students}</h3>\n<h3>Посещаемость: Общая посещаемость на занятиях: {attendance_percentage:.2f}%</h3>\n"
     report_content += student_data.to_html(index=False)
     
     save_report(report_content, f"полный_отчет_группы_{group_name}.html")
@@ -125,8 +144,8 @@ def main(excel_file: str, sheet_index: int, action: str, student_index: Optional
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Программа для работы с данными о посещаемости студентов.")
     parser.add_argument("--file", default=DEFAULT_EXCEL_FILE, help="Путь к файлу Excel")
-    parser.add_argument("--sheet_index", type=int, required=True, help="Номер листа для работы")
-    parser.add_argument("--action", required=True, help="Действие: 1 - отчет по студентам, 2 - отчет по дате, 3 - полный отчет")
+    parser.add_argument("--sheet_index", default=0, type=int, help="Номер листа для работы")
+    parser.add_argument("--action", default="3", help="Действие: 1 - отчет по студентам, 2 - отчет по дате, 3 - полный отчет")
     parser.add_argument("--student_index", type=int, help="Номер студента для отчета (только для действия 1)")
     parser.add_argument("--date_index", type=int, help="Номер даты для отчета (только для действия 2)")
     args = parser.parse_args()
