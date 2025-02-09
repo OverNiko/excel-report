@@ -2,13 +2,11 @@
 
 import pandas as pd
 from datetime import datetime, timedelta
-import logging
 from typing import Union, Optional
 from openpyxl import load_workbook
 import argparse
 
 pd.set_option('future.no_silent_downcasting', True)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 DEFAULT_EXCEL_FILE = 'Черненко Александр Александрович.xlsx'
 BASE_DATE = datetime(2024, 10, 3)
