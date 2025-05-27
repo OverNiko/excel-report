@@ -18,7 +18,7 @@
 ### Запуск из командной строки
 
 ```sh
-python [app.py](http://_vscodecontentref_/0) --file <путь_к_файлу.xlsx> --sheet_index <номер_листа> --action <действие> [--student_index <номер_студента>] [--date_index <номер_занятия>]
+python app.py --file <путь_к_файлу.xlsx> --sheet_index <номер_листа> --action <действие> [--student_index <номер_студента>] [--date_index <номер_занятия>]
 ```
 
 ### Аргументы
@@ -37,25 +37,26 @@ python [app.py](http://_vscodecontentref_/0) --file <путь_к_файлу.xlsx
 
 ### Отчёт по студенту:
 
-```
-python [app.py](http://_vscodecontentref_/1) --action 1 --student_index 0
+```bash
+python app.py --action 1 --student_index 0
 ```
 
 ### Отчёт по занятию:
 
-```
-python [app.py](http://_vscodecontentref_/2) --action 2 --date_index 1
+```bash
+python app.py --action 2 --date_index 1
 ```
 
 ### Полный отчёт по группе:
 
-```
-python [app.py](http://_vscodecontentref_/3) --action 3
+```bash
+python app.py --action 3
 ```
 
 ## Формат отчётов
 
 HTML-отчёты содержат таблицы с данными и краткую статистику.
+
 JSON-отчёты содержат структурированные данные для дальнейшей обработки.
 
 ## Нововведения
@@ -73,5 +74,6 @@ JSON-отчёты содержат структурированные данны
 - openpyxl
 ## Запуск
 
-Установите зависимости из файла => requirements.txt
+Установите зависимости из файла [requirements.txt](requirements.txt)
+
 Запустите программу с нужными параметрами.
