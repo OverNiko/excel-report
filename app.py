@@ -179,6 +179,7 @@ def generate_student_report(student_data: pd.DataFrame, dates: list, group_name:
     )
     report_content += attendance_data.to_html(index=False)
     
+    attendance_data['Дата'] = attendance_data['Дата'].astype(str)
     json_data = {
         "group": group_name,
         "fio": fio,
