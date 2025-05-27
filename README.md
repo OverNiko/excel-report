@@ -18,7 +18,7 @@
 ### Запуск из командной строки
 
 ```sh
-python [app.py](http://_vscodecontentref_/0) --file <путь_к_файлу.xlsx> --sheet_index <номер_листа> --action <действие> [--student_index <номер_студента>] [--date_index <номер_занятия>]
+python app.py --file <путь_к_файлу.xlsx> --sheet_index <номер_листа> --action <действие> [--student_index <номер_студента>] [--date_index <номер_занятия>]
 ```
 
 ### Аргументы
