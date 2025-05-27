@@ -53,7 +53,7 @@ def save_report(content: str, file_name: str) -> None:
         f.write(content)
     print(f"Отчет успешно сохранен в файл: {file_name}")
 
-def generate_attendance_report(student_data: pd.DataFrame, dates: list, date: datetime, group_name: str) -> None:
+def generate_attendance_report(student_data: pd.DataFrame, dates: list, date: datetime, group_name: str, report_format: str) -> None:
     """Генерирует отчет о посещаемости за указанное занятие и сохраняет его."""
     date_str = date.strftime('%Y-%m-%d')
     if date_str in [d.strftime('%Y-%m-%d') for d in dates]:
@@ -77,8 +77,6 @@ def generate_attendance_report(student_data: pd.DataFrame, dates: list, date: da
         )
         report_content += attendance_data.to_html(index=False)
         
-        save_report(report_content, f"отчет_группы_{group_name}_за_{date_str}.html")
-        
         json_data = {
             "group": group_name,
             "date": date_str,
@@ -88,11 +86,15 @@ def generate_attendance_report(student_data: pd.DataFrame, dates: list, date: da
             "attendance_status": attendance_status,
             "students": attendance_data.to_dict(orient="records")
         }
-        save_report_json(json_data, f"отчет_группы_{group_name}_за_{date_str}.json")
+        
+        if report_format in ("2", "3"):
+            save_report(report_content, f"отчет_группы_{group_name}_за_{date_str}.html")
+        if report_format in ("1", "3"):
+            save_report_json(json_data, f"отчет_группы_{group_name}_за_{date_str}.json")
     else:
         print(f"Нет занятий на дату {date_str}.")
 
-def view_all_data(student_data: pd.DataFrame, dates: list, group_name: str) -> None:
+def view_all_data(student_data: pd.DataFrame, dates: list, group_name: str, report_format: str) -> None:
     """Просмотр всех данных файла и сохраняет в отчет."""
     total_classes = len(dates)
     total_students = len(student_data)
@@ -118,8 +120,7 @@ def view_all_data(student_data: pd.DataFrame, dates: list, group_name: str) -> N
         f"<h4>Оценка посещаемости: <span style='color:{status_color}'>{attendance_status}</span></h4>\n"
     )
     report_content += student_data.to_html(index=False)
-    
-    save_report(report_content, f"полный_отчет_группы_{group_name}.html")
+
     
     json_data = {
         "group": group_name,
@@ -128,9 +129,13 @@ def view_all_data(student_data: pd.DataFrame, dates: list, group_name: str) -> N
         "attendance_status": attendance_status,
         "students": student_data.to_dict(orient="records")
     }
-    save_report_json(json_data, f"полный_отчет_группы_{group_name}.json")
+    
+    if report_format in ("2", "3"):
+        save_report(report_content, f"полный_отчет_группы_{group_name}.html")
+    if report_format in ("1", "3"):
+        save_report_json(json_data, f"полный_отчет_группы_{group_name}.json")
 
-def generate_student_report(student_data: pd.DataFrame, dates: list, group_name: str, student_index: int) -> None:
+def generate_student_report(student_data: pd.DataFrame, dates: list, group_name: str, student_index: int, report_format: str) -> None:
     """Генерирует отчет о посещаемости для выбранного студента и сохраняет его."""
     sorted_student_data = student_data.sort_values('№ п/п')
     if 0 <= student_index < len(sorted_student_data):
@@ -160,8 +165,6 @@ def generate_student_report(student_data: pd.DataFrame, dates: list, group_name:
     )
     report_content += attendance_data.to_html(index=False)
     
-    save_report(report_content, f"отчет_о_посещаемости_студента(ки)_{student['Фамилия']}_{group_name}.html")
-    
     json_data = {
         "group": group_name,
         "fio": fio,
@@ -171,9 +174,12 @@ def generate_student_report(student_data: pd.DataFrame, dates: list, group_name:
         "attendance_status": attendance_status,
         "attendance": attendance_data.to_dict(orient="records")
     }
-    save_report_json(json_data, f"отчет_о_посещаемости_студента(ки)_{student['Фамилия']}_{group_name}.json")
+    if report_format in ("2", "3"):
+        save_report(report_content, f"отчет_о_посещаемости_студента(ки)_{student['Фамилия']}_{group_name}.html")
+    if report_format in ("1", "3"):
+        save_report_json(json_data, f"отчет_о_посещаемости_студента(ки)_{student['Фамилия']}_{group_name}.json")
 
-def main(excel_file: str, sheet_index: int, action: str, student_index: Optional[int] = None, date_index: Optional[int] = None) -> None:
+def main(excel_file: str, sheet_index: int, action: str, student_index: Optional[int] = None, date_index: Optional[int] = None, report_format: str = "1") -> None:
     """Основная функция программы для обработки данных из Excel и взаимодействия с пользователем."""   
     sheet_name = choose_sheet(excel_file, sheet_index)
     
@@ -196,19 +202,19 @@ def main(excel_file: str, sheet_index: int, action: str, student_index: Optional
 
     if action == '1':
         if student_index is not None:
-            generate_student_report(student_data, dates, group_name, student_index)
+            generate_student_report(student_data, dates, group_name, student_index, report_format)
         else:
             print("Необходимо указать номер студента для отчета.")
     elif action == '2':
         if date_index is not None:
             if 0 <= date_index < len(dates):
-                generate_attendance_report(student_data, dates, dates[date_index], group_name)
+                generate_attendance_report(student_data, dates, dates[date_index], group_name, report_format)
             else:
-                print("Неверный номер даты.")
+                print("Неверный номер занятия.")
         else:
-            print("Необходимо указать номер даты для отчета.")
+            print("Необходимо указать номер занятия для отчета.")
     elif action == '3':
-        view_all_data(student_data, dates, group_name)
+        view_all_data(student_data, dates, group_name, report_format)
     else:
         print("Неверный выбор. Пожалуйста, попробуйте снова.")
 
@@ -216,9 +222,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Программа для работы с данными о посещаемости студентов.")
     parser.add_argument("--file", default=DEFAULT_EXCEL_FILE, help="Путь к файлу Excel")
     parser.add_argument("--sheet_index", default=0, type=int, help="Номер листа для работы")
-    parser.add_argument("--action", default="3", help="Действие: 1 - отчет по студентам, 2 - отчет по дате, 3 - полный отчет")
+    parser.add_argument("--action", default="3", help="Действие: 1 - отчет по студентам, 2 - отчет по дате, 3 - полный отчет (по умолчанию)")
     parser.add_argument("--student_index", type=int, help="Номер студента для отчета (только для действия 1)")
     parser.add_argument("--date_index", type=int, help="Номер занятия для отчета (только для действия 2)")
+    parser.add_argument("--report_format", default="1", help="Формат отчета: 1 - json (по умолчанию), 2 - html, 3 - json и html")
     args = parser.parse_args()
 
-    main(args.file, args.sheet_index, args.action, args.student_index, args.date_index)
+    main(args.file, args.sheet_index, args.action, args.student_index, args.date_index, args.report_format)
