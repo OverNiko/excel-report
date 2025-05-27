@@ -5,11 +5,27 @@ from datetime import datetime, timedelta
 from typing import Union, Optional
 from openpyxl import load_workbook
 import argparse
+import json
 
 pd.set_option('future.no_silent_downcasting', True)
 
 DEFAULT_EXCEL_FILE = 'Черненко Александр Александрович.xlsx'
 BASE_DATE = datetime(2024, 10, 3)
+
+def save_report_json(data: dict, file_name: str) -> None:
+    """Сохраняет отчет в JSON файл."""
+    with open(file_name, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+    print(f"Отчет успешно сохранен в файл: {file_name}")
+    
+def get_attendance_status(percentage: float) -> tuple[str, str]:
+    """Возвращает статус и цвет по проценту посещаемости."""
+    if percentage > 75 or percentage == 50:
+        return "большинство студентов посещает занятия", "green"
+    elif 25 < percentage < 50:
+        return "большинство студентов не посещает занятия", "red"
+    else:
+        return "студенты не посещают занятия", "red"
 
 def get_sheet_names(excel_file: str) -> list:
     """Получает список имен всех листов в Excel файле."""
@@ -38,7 +54,7 @@ def save_report(content: str, file_name: str) -> None:
     print(f"Отчет успешно сохранен в файл: {file_name}")
 
 def generate_attendance_report(student_data: pd.DataFrame, dates: list, date: datetime, group_name: str) -> None:
-    """Генерирует отчет о посещаемости за указанную дату и предлагает сохранить его."""
+    """Генерирует отчет о посещаемости за указанное занятие и сохраняет его."""
     date_str = date.strftime('%Y-%m-%d')
     if date_str in [d.strftime('%Y-%m-%d') for d in dates]:
         index = dates.index(date)
@@ -51,15 +67,33 @@ def generate_attendance_report(student_data: pd.DataFrame, dates: list, date: da
         total_attendance = sum(attendance_data[attendance_column])
         attendance_percentage = (total_attendance / total_students) * 100
         
-        report_content = f"<h1>Отчет по группе за дату</h1>\n<h2>Группа: {group_name}</h2>\n<h3>Всего студентов: {total_students}</h3>\n<h3>Посещаемость: Общая посещаемость на занятии {date}: {total_attendance} из {total_students} ({attendance_percentage:.2f}%)\n"
+        attendance_status, status_color = get_attendance_status(attendance_percentage)
+        report_content = (
+            f"<h1>Отчет по группе за дату</h1>\n"
+            f"<h2>Группа: {group_name}</h2>\n"
+            f"<h3>Всего студентов: {total_students}</h3>\n"
+            f"<h3>Посещаемость: Общая посещаемость на занятии {date.date()}: {total_attendance} из {total_students} ({attendance_percentage:.2f}%)</h3>\n"
+            f"<h4>Оценка посещаемости: <span style='color:{status_color}'>{attendance_status}</span></h4>\n"
+        )
         report_content += attendance_data.to_html(index=False)
         
         save_report(report_content, f"отчет_группы_{group_name}_за_{date_str}.html")
+        
+        json_data = {
+            "group": group_name,
+            "date": date_str,
+            "total_students": total_students,
+            "attendance": int(total_attendance),
+            "attendance_percentage": round(attendance_percentage, 2),
+            "attendance_status": attendance_status,
+            "students": attendance_data.to_dict(orient="records")
+        }
+        save_report_json(json_data, f"отчет_группы_{group_name}_за_{date_str}.json")
     else:
         print(f"Нет занятий на дату {date_str}.")
 
 def view_all_data(student_data: pd.DataFrame, dates: list, group_name: str) -> None:
-    """Просмотр всех данных файла и возможность сохранения в отчет."""
+    """Просмотр всех данных файла и сохраняет в отчет."""
     total_classes = len(dates)
     total_students = len(student_data)
     
@@ -75,13 +109,29 @@ def view_all_data(student_data: pd.DataFrame, dates: list, group_name: str) -> N
     total_attendance = attendance_data.drop(columns=['Дата']).sum().sum()
     attendance_percentage = (total_attendance / (total_classes * total_students)) * 100
     
-    report_content = f"<h1>Отчет по группе</h1>\n<h2>Группа: {group_name}</h2>\n<h3>Всего студентов: {total_students}</h3>\n<h3>Посещаемость: Общая посещаемость на занятиях: {attendance_percentage:.2f}%</h3>\n"
+    attendance_status, status_color = get_attendance_status(attendance_percentage)
+    report_content = (
+        f"<h1>Отчет по группе</h1>\n"
+        f"<h2>Группа: {group_name}</h2>\n"
+        f"<h3>Всего студентов: {total_students}</h3>\n"
+        f"<h3>Посещаемость: Общая посещаемость на занятиях: {attendance_percentage:.2f}%</h3>\n"
+        f"<h4>Оценка посещаемости: <span style='color:{status_color}'>{attendance_status}</span></h4>\n"
+    )
     report_content += student_data.to_html(index=False)
     
     save_report(report_content, f"полный_отчет_группы_{group_name}.html")
+    
+    json_data = {
+        "group": group_name,
+        "total_students": total_students,
+        "attendance_percentage": round(attendance_percentage, 2),
+        "attendance_status": attendance_status,
+        "students": student_data.to_dict(orient="records")
+    }
+    save_report_json(json_data, f"полный_отчет_группы_{group_name}.json")
 
 def generate_student_report(student_data: pd.DataFrame, dates: list, group_name: str, student_index: int) -> None:
-    """Генерирует отчет о посещаемости для выбранного студента."""
+    """Генерирует отчет о посещаемости для выбранного студента и сохраняет его."""
     sorted_student_data = student_data.sort_values('№ п/п')
     if 0 <= student_index < len(sorted_student_data):
         student = sorted_student_data.iloc[student_index]
@@ -99,10 +149,29 @@ def generate_student_report(student_data: pd.DataFrame, dates: list, group_name:
     total_classes = len(dates)
     attendance_percentage = (attendance_count / total_classes) * 100
     
-    report_content = f"<h1>Отчет по студенту</h1>\n<h2>Группа: {group_name}</h2>\n<h3>Всего студентов: {len(student_data)}</h3>\n<h3>ФИО: {fio}</h3>\n<h3>Посещаемость: Посещено занятий {attendance_count} / всего занятий {total_classes} -- {attendance_percentage:.2f}%</h3>\n"
+    attendance_status, status_color = get_attendance_status(attendance_percentage)
+    report_content = (
+        f"<h1>Отчет по студенту</h1>\n"
+        f"<h2>Группа: {group_name}</h2>\n"
+        f"<h3>Всего студентов: {len(student_data)}</h3>\n"
+        f"<h3>ФИО: {fio}</h3>\n"
+        f"<h3>Посещаемость: Посещено занятий {attendance_count} / всего занятий {total_classes} -- {attendance_percentage:.2f}%</h3>\n"
+        f"<h4>Оценка посещаемости: <span style='color:{status_color}'>{attendance_status}</span></h4>\n"
+    )
     report_content += attendance_data.to_html(index=False)
     
     save_report(report_content, f"отчет_о_посещаемости_студента(ки)_{student['Фамилия']}_{group_name}.html")
+    
+    json_data = {
+        "group": group_name,
+        "fio": fio,
+        "attendance_count": int(attendance_count),
+        "total_classes": total_classes,
+        "attendance_percentage": round(attendance_percentage, 2),
+        "attendance_status": attendance_status,
+        "attendance": attendance_data.to_dict(orient="records")
+    }
+    save_report_json(json_data, f"отчет_о_посещаемости_студента(ки)_{student['Фамилия']}_{group_name}.json")
 
 def main(excel_file: str, sheet_index: int, action: str, student_index: Optional[int] = None, date_index: Optional[int] = None) -> None:
     """Основная функция программы для обработки данных из Excel и взаимодействия с пользователем."""   
@@ -116,8 +185,12 @@ def main(excel_file: str, sheet_index: int, action: str, student_index: Optional
 
     group_name = df.iloc[0, 0].split(':')[-1].strip()
     dates = df.iloc[2, 4:].dropna().apply(parse_date).tolist()
+    # Оставляем только даты, которые уже наступили (или сегодня)
+    today = datetime.now()
+    dates = [d for d in dates if d <= today]
     headers = ['№ п/п', 'Фамилия', 'Имя', 'Отчество'] + [f'Занятие_{i+1}' for i in range(len(dates))]
     student_data = df.iloc[3:].reset_index(drop=True)
+    student_data = student_data.iloc[:, :4+len(dates)]  # Обрезаем лишние столбцы, если даты были отброшены
     student_data.columns = headers
     student_data.iloc[:, 4:] = student_data.iloc[:, 4:].fillna(0).astype(int)
 
@@ -145,7 +218,7 @@ if __name__ == "__main__":
     parser.add_argument("--sheet_index", default=0, type=int, help="Номер листа для работы")
     parser.add_argument("--action", default="3", help="Действие: 1 - отчет по студентам, 2 - отчет по дате, 3 - полный отчет")
     parser.add_argument("--student_index", type=int, help="Номер студента для отчета (только для действия 1)")
-    parser.add_argument("--date_index", type=int, help="Номер даты для отчета (только для действия 2)")
+    parser.add_argument("--date_index", type=int, help="Номер занятия для отчета (только для действия 2)")
     args = parser.parse_args()
 
     main(args.file, args.sheet_index, args.action, args.student_index, args.date_index)
