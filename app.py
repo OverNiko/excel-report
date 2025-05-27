@@ -20,12 +20,23 @@ def save_report_json(data: dict, file_name: str) -> None:
     
 def get_attendance_status(percentage: float) -> tuple[str, str]:
     """Возвращает статус и цвет по проценту посещаемости."""
-    if percentage > 75 or percentage == 50:
+    if percentage >= 50:
         return "большинство студентов посещает занятия", "green"
-    elif 25 < percentage < 50:
+    elif percentage < 50 and percentage >= 25:
         return "большинство студентов не посещает занятия", "red"
     else:
         return "студенты не посещают занятия", "red"
+    
+def get_student_attendance_status(percentage: float) -> tuple[str, str]:
+    """Статус посещаемости для одного студента."""
+    if percentage >= 75:
+        return "студент хорошо посещает занятия", "green"
+    elif percentage >= 50:
+        return "студент удовлетворительно посещает занятия", "orange"
+    elif percentage >= 25:
+        return "студент редко посещает занятия", "red"
+    else:
+        return "студент практически не посещает занятия", "red"
 
 def get_sheet_names(excel_file: str) -> list:
     """Получает список имен всех листов в Excel файле."""
@@ -72,8 +83,9 @@ def generate_attendance_report(student_data: pd.DataFrame, dates: list, date: da
             f"<h1>Отчет по группе за дату</h1>\n"
             f"<h2>Группа: {group_name}</h2>\n"
             f"<h3>Всего студентов: {total_students}</h3>\n"
-            f"<h3>Посещаемость: Общая посещаемость на занятии {date.date()}: {total_attendance} из {total_students} ({attendance_percentage:.2f}%)</h3>\n"
-            f"<h4>Оценка посещаемости: <span style='color:{status_color}'>{attendance_status}</span></h4>\n"
+            f"<h3>Посещаемость: </h3>\n"
+            f"<h4>- общая посещаемость на занятии {date.date()}: {total_attendance} из {total_students} ({attendance_percentage:.2f}%)</h4>\n"
+            f"<h4>- оценка посещаемости: <span style='color:{status_color}'>{attendance_status}</span></h4>\n"
         )
         report_content += attendance_data.to_html(index=False)
         
@@ -116,8 +128,9 @@ def view_all_data(student_data: pd.DataFrame, dates: list, group_name: str, repo
         f"<h1>Отчет по группе</h1>\n"
         f"<h2>Группа: {group_name}</h2>\n"
         f"<h3>Всего студентов: {total_students}</h3>\n"
-        f"<h3>Посещаемость: Общая посещаемость на занятиях: {attendance_percentage:.2f}%</h3>\n"
-        f"<h4>Оценка посещаемости: <span style='color:{status_color}'>{attendance_status}</span></h4>\n"
+        f"<h3>Посещаемость: </h3>\n"
+        f"<h4>- общая посещаемость на занятиях: {attendance_percentage:.2f}%</h4>\n"
+        f"<h4>- оценка посещаемости: <span style='color:{status_color}'>{attendance_status}</span></h4>\n"
     )
     report_content += student_data.to_html(index=False)
 
@@ -154,14 +167,15 @@ def generate_student_report(student_data: pd.DataFrame, dates: list, group_name:
     total_classes = len(dates)
     attendance_percentage = (attendance_count / total_classes) * 100
     
-    attendance_status, status_color = get_attendance_status(attendance_percentage)
+    attendance_status, status_color = get_student_attendance_status(attendance_percentage)
     report_content = (
         f"<h1>Отчет по студенту</h1>\n"
         f"<h2>Группа: {group_name}</h2>\n"
         f"<h3>Всего студентов: {len(student_data)}</h3>\n"
         f"<h3>ФИО: {fio}</h3>\n"
-        f"<h3>Посещаемость: Посещено занятий {attendance_count} / всего занятий {total_classes} -- {attendance_percentage:.2f}%</h3>\n"
-        f"<h4>Оценка посещаемости: <span style='color:{status_color}'>{attendance_status}</span></h4>\n"
+        f"<h3>Посещаемость: </h3>\n"
+        f"<h3>- посещено занятий {attendance_count} / всего занятий {total_classes} -- {attendance_percentage:.2f}%</h3>\n"
+        f"<h3>- пценка посещаемости: <span style='color:{status_color}'>{attendance_status}</span></h3>\n"
     )
     report_content += attendance_data.to_html(index=False)
     
@@ -175,9 +189,9 @@ def generate_student_report(student_data: pd.DataFrame, dates: list, group_name:
         "attendance": attendance_data.to_dict(orient="records")
     }
     if report_format in ("2", "3"):
-        save_report(report_content, f"отчет_о_посещаемости_студента(ки)_{student['Фамилия']}_{group_name}.html")
+        save_report(report_content, f"отчет_о_посещаемости_студента(ки)_{student['Фамилия']}_группы_{group_name}.html")
     if report_format in ("1", "3"):
-        save_report_json(json_data, f"отчет_о_посещаемости_студента(ки)_{student['Фамилия']}_{group_name}.json")
+        save_report_json(json_data, f"отчет_о_посещаемости_студента(ки)_{student['Фамилия']}_группы_{group_name}.json")
 
 def main(excel_file: str, sheet_index: int, action: str, student_index: Optional[int] = None, date_index: Optional[int] = None, report_format: str = "1") -> None:
     """Основная функция программы для обработки данных из Excel и взаимодействия с пользователем."""   
