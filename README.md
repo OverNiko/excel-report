@@ -76,9 +76,9 @@ python app.py --action 3 --report_format 1
 
 ## Запуск
 
-Установите зависимости:
+Установите файл с зависимостями:
 ```sh
-pip install pandas openpyxl
+pip install -n requirements.txt
 ```
 
 Запустите программу с нужными параметрами.
